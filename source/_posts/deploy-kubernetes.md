@@ -1,5 +1,5 @@
 title: Deploy kubernetes by manual on centos 7
-date: 2017-01-18 15:00:00
+date: 2017-01-18
 tags:
 - docker
 - kubernetes

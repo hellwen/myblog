@@ -1,5 +1,5 @@
 title: 使用docker命令时需要sudo问题
-date: 2017-01-18 16:00:00
+date: 2017-01-18
 tags:
 - docker
 ---

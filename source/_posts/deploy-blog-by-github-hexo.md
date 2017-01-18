@@ -1,5 +1,5 @@
 title: Deploy private blog using Github and Hexo
-date: 2017-01-18 14:00:00
+date: 2017-01-18
 tags:
 - github
 - hexo
