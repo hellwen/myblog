@@ -1,5 +1,9 @@
----
 title: Deploy private blog using Github and Hexo
+date: 2017-01-18 14:00:00
+tags:
+- github
+- hexo
+- blog
 ---
 
 ## Install nodejs
