@@ -1,4 +1,4 @@
-title: Deploy kubernetes by manual
+title: Deploy kubernetes by manual on centos 7
 date: 2017-01-18 15:00:00
 tags:
 - docker
@@ -6,65 +6,31 @@ tags:
 ---
 
 
-# Docker no need root
+
+# 环境信息
+
+|ip|role|hostname|
+|--|----|--------|
+|10.10.0.1|master&minion|k8s-master-1|
+|10.10.0.2|minion|k8s-node-1|
+|10.10.0.3|minion|k8s-node-2|
+
+# on all machine
+
+*Note: 部署的时候最好关闭selinux，否则像 nfs会挂载失败(nfs用于使用pv，不是必须的)*
+
+## 修改hostname
+
+用户名建议使用中横杠，因为后面在进行kubernetes配置的时候可以直接使用hostname作为节点名称
 
 ```shell
-sudo groupadd docker
-sudo usermod -aG docker $(whoami)
-sudo systemctl restart docker
-
-Logout
-Login
+echo "k8s-node-xx" > /etc/hostname
 ```
 
-# Docker config thin pool
+## 基本配置
 
-about: https://docs.docker.com/engine/userguide/storagedriver/device-mapper-driver/
-
-```shell
-systemctl stop docker
-rm -rf /var/lib/docker
-
-pvcreate /dev/vdb
-vgcreate docker /dev/vdb
-
-cat << EOF > /etc/sysconfig/docker-storage-setup
-STORAGE_DRIVER=devicemapper
-VG=docker
-EXTRA_DOCKER_STORAGE_OPTIONS=" --storage-opt dm.use_deferred_removal=true"
-EOF
-
-docker-storage-setup
-
-systemctl daemon-reload
-systemctl start docker
-```
-# Docker logs
-
-Modify the docker logs from journald to json-file on centos 7
-
-```shell
-vi /etc/sysconfig/docker
-
-# replice
-OPTIONS='--selinux-enabled --log-driver=journald'
-# to
-OPTIONS='--selinux-enabled --log-driver=json-file'
-
-systemctl restart docker
-```
-
-# Install by Tarballs
-
-*Note: 部署的时候最好关闭selinux，否则像 nfs会挂载失败*
-
-修改hostname
-
-```shell
-echo "k8s_nX.kubernetes.com" > /etc/hostname
-```
-
-### on all machine
+关闭防火墙
+安装ntp
 
 ```shell
 sudo systemctl stop firewalld
@@ -74,50 +40,92 @@ sudo yum -y install ntp
 sudo systemctl start ntpd
 sudo systemctl enable ntpd
 sudo systemctl status ntpd
-
-sudo useradd -u 1008 k8s -m && sudo passwd k8s
 ```
 
-add k8s user
-```shell
+创建k8s帐号和sudo
+
+```
+sudo useradd -u 1008 k8s -m && sudo passwd k8s
+
 sudo echo "" >> /etc/sudoers
 sudo echo "#add k8s user" >> /etc/sudoers
 sudo echo "k8s ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 ```
 
-### on master
+从下面开始所以操作都是在k8s这个用户下进行
 
-etcd download from: https://github.com/coreos/etcd/releases
+# on master
+
+## etcd
+
+### Download && Install etcd
+
+etcd是类似与zookeeper的分布式配置存储解决方案，特意加了“配置”两个字是因为它的设计目标主要是用来存储配置文件
+
+下载地址：[etcd v3.0.9](https://github.com/coreos/etcd/releases/download/v3.0.9/etcd-v3.0.9-linux-amd64.tar.gz)
 
 ```shell
+wget https://github.com/coreos/etcd/releases/download/v3.0.9/etcd-v3.0.9-linux-amd64.tar.gz
 tar -zxf etcd-v3.0.9-linux-amd64.tar.gz
 ln -s etcd-v3.0.9-linux-amd64 etcd
-cd etcd
+```
+
+### 启动配置脚本
+
+因为这是实验环境，所以这里的etcd只使用一个节点，如果你是用于生产环境建议配置3个以上的etcd节点
+
+```
+cd ~/etcd
 cat <<EOF > etcd-start.sh
 #! /bin/sh
 
-THIS_IP=10.10.10.214
-
-export ETCD_NAME="k8s_node_1"
-export ETCD_INITIAL_CLUSTER="k8s_master_1=http://10.10.10.93:2380,k8s_node_1=http://10.10.10.214:2380"
-export ETCD_INITIAL_CLUSTER_STATE="existing"
+THIS_IP=10.10.0.1
 
 ./etcd \
---data-dir=data \
---initial-advertise-peer-urls http://${THIS_IP}:2380 \
---listen-peer-urls http://${THIS_IP}:2380 \
+--name=infra1 \
 --advertise-client-urls http://${THIS_IP}:2379 \
---listen-client-urls http://${THIS_IP}:2379,http://127.0.0.1:2379 > etcd.log 2>&1
+--listen-client-urls http://${THIS_IP}:2379,http://127.0.0.1:2379 \
+--data-dir=data  \
+1> etcd.log 2>&1
 EOF
 chmod a+x etcd-start.sh
-./etcd-start.sh
+```
 
+### 使用配置脚本启动etcd
+
+```
+./etcd-start.sh
+```
+
+### 测试etcd
+
+```
+./etcdctl ls
+```
+
+如果上述命令成功，那么etcd处于正常运行中
+
+### 添加flannel的网络地址范围到etcd中
+
+```
+cd ~/etcd
 ./etcdctl mk /flannel/network/config '{"Network":"172.1.0.0/16"}'
 ```
 
-kubernetes download from: https://github.com/kubernetes/kubernetes/releases
+其中 /flannel/network/config这个地址是可以自己指定的，需要配置到flannel中
+
+## Kubernetes
+
+### 下载并配置kubernetes
+
+kubernetes因为发布节奏很快，所以各种仓库都不会及时更新，所以本文采用手动安装方式，安装包可以直接在github上下载
+
+下载地址：[kubernetes v1.4.6](https://github.com/kubernetes/kubernetes/releases/download/v1.4.6/kubernetes.tar.gz)
+
+这里需要注意，kubernetes v1.5以后不再提供bin文件，所以你如果下载1.5以后的版本需要另外下载bin文件
 
 ```shell
+wget https://github.com/kubernetes/kubernetes/releases/download/v1.4.6/kubernetes.tar.gz
 tar zxf kubernetes.tar.gz
 cd kubernetes/server
 tar zxf kubernetes-server-linux-amd64.tar.gz
@@ -125,167 +133,139 @@ cd kubernetes/server/bin
 mkdir -p ~/kubernetes-master/log
 cp kube-apiserver kube-controller-manager kubectl kube-dns kube-scheduler ~/kubernetes-master/
 
+# 将bin添加到path中
 echo "export PATH=~/kubernetes-master:\$PATH" >> ~/.bash_profile
-# relogin
 
+source ~/.bash_profile
+```
+
+### init配置文件
+
+```
 cd ~/kubernetes-master
 cat <<EOF > init.sh
 #! /bin/sh
 
-KUBE_MASTER=192.168.72.128
+KUBE_MASTER=10.10.0.1
 
 # Change to root auth
 sudo chown root.root kube-dns
 sudo chmod u+s kube-dns
-
-mkdir -p ~/kubernetes-master/log
-
-# generate kubernetes keys
-mkdir -p ~/kubernetes-master/certs
-cd ~/kubernetes-master/certs
-rm -rf ~/kubernetes-master/certs/*
-
-openssl genrsa -out ca.key 2048
-openssl req -x509 -new -nodes -key ca.key -subj "/CN=${KUBE_MASTER}" -days 10000 -out ca.crt
-
-openssl genrsa -out apiserver.key 2048
-openssl req -new -key apiserver.key -subj "/CN=${KUBE_MASTER}" -out apiserver.csr
-openssl x509 -req -in apiserver.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out apiserver.crt -days 10000
-
-openssl genrsa -out cs_client.key 2048
-openssl req -new -key cs_client.key -subj "/CN=${KUBE_MASTER}" -out cs_client.csr
-openssl x509 -req -in cs_client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out cs_client.crt -days 10000
-
-openssl genrsa -out kubelet_client.key 2048
-openssl req -new -key kubelet_client.key -subj "/CN=192.168.1.129" -out kubelet_client.csr
-openssl x509 -req -in kubelet_client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out kubelet_client.crt -days 10000
-
-> abac.csv
-# user
-# readonly
-# kind: pods, events
-# namespace
-echo '{"user":"dean"}' >> abac.csv
-echo '{"user":"kubelet"}' >> abac.csv
-
-> basic_auth.csv
-echo "dean.wu,dean,dean" >> basic_auth.csv
-echo "kubelet.wu,kubelet,kubelet" >> basic_auth.csv
-
-# Generate kubeconfig
-CLUSTER_NICK="k8s-zeusis-qcloud"
-CONTEXT_NAME="kzq"
-USER_ID="dean"
-USER="dean"
-PASSWORD="dean.wu"
-
-cd ~/kubernetes-master
-## create kubeconfig entry
-./kubectl config set-cluster $CLUSTER_NICK \
-    --server=https://$KUBE_MASTER:6450 \
-    --insecure-skip-tls-verify=true \
-    --kubeconfig=/home/k8s/.kube/config
-
-## create user entry
-./kubectl config set-credentials $USER_ID \
-    --username=$USER \
-    --password=$PASSWORD \
-    --kubeconfig=/home/k8s/.kube/config
-
-## create context entry
-./kubectl config set-context $CONTEXT_NAME \
-    --cluster=$CLUSTER_NICK \
-    --user=$USER_ID \
-    --kubeconfig=/home/k8s/.kube/config
-
-./kubectl config use-context $CONTEXT_NAME \
-    --kubeconfig=/home/k8s/.kube/config
 EOF
 chmod a+x init.sh
 ./init.sh
+```
 
+kube-dns需要使用root权限
+
+### api启动配置文件
+
+```
+cd ~/kubernetes-master
 cat <<EOF > start_k8s_api.sh
 #! /bin/sh
 
 # start the main server of k8s master
 sudo ./kube-apiserver \
-    --insecure-bind-address=0.0.0.0 \
-    --insecure-port=6550 \
     --bind-address=0.0.0.0 \
-    --secure-port=6450 \
-    --etcd_servers=http://192.168.72.128:2379,http://192.168.72.63:2379,http://192.168.72.233:2379 \
-    --client-ca-file="certs/ca.crt" \
-    --tls-cert-file="certs/apiserver.crt" \
-    --tls-private-key-file="certs/apiserver.key" \
+    --insecure-bind-address=0.0.0.0 \
+    --insecure-port=8080 \
+    --etcd_servers=http://10.10.0.1:2379 \
     --allow-privileged=true \
-    --basic_auth_file="certs/basic_auth.csv" \
-    --authorization_mode=ABAC \
-    --authorization_policy_file="certs/abac.csv" \
     --service-cluster-ip-range=182.1.0.0/16 \
     --log-dir="log" \
-> k8s-api.log 2>&1
+1> k8s-api.log 2>&1
 EOF
 chmod a+x start_k8s_api.sh
+```
 
+### controller-manager配置文件
+
+```
+cd ~/kubernetes-master
 cat <<EOF > start_k8s_cm.sh
 #! /bin/sh
 
 ./kube-controller-manager \
-    --master="http://127.0.0.1:6550" \
+    --master="http://127.0.0.1:8080" \
     --log-dir="log" \
-> k8s-cm.log 2>&1
+1> k8s-cm.log 2>&1
 EOF
 chmod a+x start_k8s_cm.sh
+```
 
+### dns配置文件
+
+```
+cd ~/kubernetes-master
 cat <<EOF > start_k8s_dns.sh
 #! /bin/sh
 
-KUBE_DOMAIN="zeusis.local"
+KUBE_DOMAIN="cluster.local"
 
 sudo ./kube-dns \
     --domain=${KUBE_DOMAIN} \
-    --kube-master-url="http://127.0.0.1:6550" \
+    --kube-master-url="http://127.0.0.1:8080" \
     --dns-port=53 \
     --log-dir="log" \
-> k8s-dns.log 2>&1
+1> k8s-dns.log 2>&1
 EOF
 chmod a+x start_k8s_dns.sh
+```
 
+### scheduler配置文件
+
+```
+cd ~/kubernetes-master
 cat <<EOF > start_k8s_scd.sh
 #! /bin/sh
 
 ./kube-scheduler \
-    --master="http://127.0.0.1:6550" \
+    --master="http://127.0.0.1:8080" \
     --log-dir="log" \
-> k8s-scd.log 2>&1
+1> k8s-scd.log 2>&1
 EOF
 chmod a+x start_k8s_scd.sh
 ```
 
-start master
+### start master
 
 ```shell
 cd ~/etcd
 ./start_etcd.sh
 
-cd ~/kubernetes
+cd ~/kubernetes-master
 ./start_k8s_api.sh
 ./start_k8s_dns.sh
 ./start_k8s_cm.sh
 ./start_k8s_scd.sh
 ```
 
-### on minions
+# on minions
 
-flannel download from: https://github.com/coreos/flannel/releases
+minion需要部署所有机器上
+master上也需要部署minion
+
+## flannel
+
+### Download && Install flannel
+
+[flannel v0.6.1](https://github.com/coreos/flannel/releases/download/v0.6.1/flannel-v0.6.1-linux-amd64.tar.gz)
 
 ```shell
+cd ~
+wget https://github.com/coreos/flannel/releases/download/v0.6.1/flannel-v0.6.1-linux-amd64.tar.gz
 tar -zxf flannel-v0.6.1-linux-amd64.tar.gz
 mkdir flannel
 mv flannel-v0.6.1-linux-amd64.tar.gz flannel
 cd ~/flannel/
 tar -zxf flannel-v0.6.1-linux-amd64.tar.gz
+```
 
+### 启动配置脚本
+
+```
+cd ~/flannel
 cat <<EOF > flanneld-start.sh
 #! /bin/sh
 
@@ -302,15 +282,15 @@ fi
 sudo ./flanneld \
     --ip-masq \
     --subnet-file="run/subnet.env" \
-    --etcd-endpoints=http://192.168.72.128:2379,http://192.168.72.63:2379,http://192.168.72.233:2379 \
+    --etcd-endpoints=http://10.10.0.1:2379 \
     --etcd-prefix=$ETCD_PREFIX > flanneld.log 2>&1
 EOF
 chmod a+x flanneld-start.sh
 ```
-
-kubernetes
+## kubernetes
 
 ```shell
+wget https://github.com/kubernetes/kubernetes/releases/download/v1.4.6/kubernetes.tar.gz
 tar zxf kubernetes.tar.gz
 cd kubernetes/server
 tar zxf kubernetes-server-linux-amd64.tar.gz
@@ -318,15 +298,45 @@ cd kubernetes/server/bin
 mkdir -p ~/kubernetes/log
 mkdir -p ~/kubernetes/cert
 mv kubelet kube-proxy ~/kubernetes/
+```
 
+### kubeconfig配置文件
+
+```
+cat << EOF > /home/k8s/kubernetes/kubeconfig
+apiVersion: v1
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: https://10.10.0.1:8080
+  name: k8s-cluster
+contexts:
+- context:
+    cluster: k8s-cluster
+    namespace: default
+  name: dft
+- context:
+    cluster: k8s-cluster
+    namespace: kube-system
+  name: sys
+current-context: dft
+kind: Config
+preferences: {}
+EOF
+```
+
+### kubelet配置文件
+
+NODE_IP分别指定两台minion机器，分别是10.10.0.2和10.10.0.3
+
+```
 cd ~/kubernetes
-
 cat <<EOF > k8s-let-start.sh
 #! /bin/sh
 
-KUBE_MASTER=192.168.72.128
-NODE_IP=192.168.72.128
-CLUSTER_DOMAIN=zeusis.local
+KUBE_MASTER=10.10.0.1
+NODE_IP=10.10.0.1
+CLUSTER_DOMAIN=cluster.local
 
 sudo ./kubelet \
     --address=0.0.0.0 \
@@ -342,46 +352,79 @@ sudo ./kubelet \
     --cluster-dns=$KUBE_MASTER \
     --cluster-domain=$CLUSTER_DOMAIN \
     --pod-manifest-path="manifests" \
-    --log-dir="log" > k8s-let.log 2>&1
+    --log-dir="log" \
+1> k8s-let.log 2>&1
 EOF
 chmod a+x k8s-let-start.sh
+```
 
+### kube-proxy配置文件
+
+```
+cd ~/kubernetes
 cat <<EOF > k8s-proxy-start.sh
 #! /bin/sh
 
-NODE_IP=192.168.72.128
+NODE_IP=10.10.0.1
 
 sudo ./kube-proxy \
     --kubeconfig="/home/k8s/kubernetes/kubeconfig" \
     --hostname_override=$NODE_IP \
     --proxy-mode=iptables \
-    --log-dir="log" > k8s-proxy.log 2>&1
+    --log-dir="log" \
+1> k8s-proxy.log 2>&1
 EOF
 chmod a+x k8s-proxy-start.sh
 ```
 
-init & start minion
+## Init & Start minion
+
+### 配置flannel和docker0
+
+启动flannel
 
 ```shell
 cd ~/flannel
 ./start_flanneld.sh
+```
 
-# only by first start
+如果是第一次启动需要进行docker的ip配置
+
+```
 sudo ./mk-docker-opts.sh -f ./run/subnet.env -d ./run/docker.env
 cat ./run/docker.env | grep -i DOCKER_OPTS
-# copy DOCKER_OPTS values write into sudo vi /etc/sysconfig/docker-network
-DOCKER_NETWORK_OPTIONS=" --bip=172.17.95.1/24 --mtu=1472"
+```
 
+记录下上面命令输出的内容，内容大概如下：
+
+```
+--bip=172.17.95.1/24 --mtu=1472
+```
+
+编辑docker-network，并修改DOCKER_NETWORK_OPTIONS参数，填入上面输出的内容
+
+类似与下面的结果：
+
+```
+sudo vi /etc/sysconfig/docker-network
+DOCKER_NETWORK_OPTIONS=" --bip=172.17.95.1/24 --mtu=1472"
+```
+
+上述步骤是用于配置docker0中可分配的网段，如果使用yum install flannel在启动时会自动配置
+
+重新启动docker
+
+```
 sudo systemctl restart docker
 ```
 
-ensure the docker0 and flannel0 in the same subnet
+通过ip a确定docker0和flannel0是在同一个网段
 
 ```shell
-ip a | grep -i 172
+ip a
 ```
 
-start kubelet
+### start kubelet
 
 ```shell
 cd ~/kubernetes
@@ -389,76 +432,17 @@ cd ~/kubernetes
 ./start_k8s_proxy.sh
 ```
 
-## config dashboard
+相同的步骤配置10.10.0.2和10.10.0.3
+配置完成后三个节点都会加入到集群中
 
-1. first: init a flannel and start the docker on master. Bacause the master need to access dashboard pod on node.
-2. second:
-kubectl create -f https://rawgit.com/kubernetes/dashboard/master/src/deploy/kubernetes-dashboard.yaml
-https://10.0.12.203/ui
+# 验证
 
-# [Private Registry](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/registry)
+登录到10.10.0.1上
 
-disable selinux, it will block nfs to mount
-
-config nfs to export a registry images' directory
-
-create pv, pvc, and deployment
-
-default, the private registry is use http
-
-config docker
-
-```shell
-# using domain
-ssh root@192.168.72.63 mkdir -p /etc/docker/certs.d/k8s-registry.zeusis.com:32000
-scp domain-crt root@192.168.72.63:/etc/docker/certs.d/k8s-registry.zeusis.com:32000/ca.crt
-
-# using ip
-sudo vi /etc/sysconfig/docker
-modified the "INSECURE_REGISTRY='--insecure-registry'" to "INSECURE_REGISTRY='--insecure-registry 119.29.43.190:32000'"
-
-# restart & test
-sudo systemctl restart docker
-docker tag ubuntu:16.10 119.29.43.190:32000/ubuntu:16.10
-docker push 119.29.43.190:32000/ubuntu:16.10
+```
+kubectl get no
 ```
 
-# static pod
+检查上个节点是否已配置完成
 
-1. create the directory
-```shell
-mkdir /etc/kubernetes.d
-```
-
-2. copy static pod yaml to the directory
-```shell
-cp etcd.yaml /etc/kubernetes.d
-```
-
-3. start kubelet with --config to point the directory
-```shell
-kubelet --config=/etc/kubelet.d/
-```
-
-# kubernetes ha
-
-## clustering etcd
-
-1. use etcd discovery
-```
-curl https://discovery.etcd.io/new?size=3
-https://discovery.etcd.io/547ded311f3698c8b1f4c97043fea03c
-```
-
-2. config statis pod on each node
-    - you should substitute the token url you got above for ${DISCOVERY_TOKEN}
-    - setting the ${NODE_NAME} and ${NODE_IP}
-
-3. validating cluster
-
-You can validate on master
-
-```shell
-kubectl exec < pod_name > etcdctl member list
-kubectl exec < pod_name > etcdctl cluster-health
-```
+Done
