@@ -1,4 +1,4 @@
-all: publish
+all: deploy
 
 add:
 	git add .
@@ -9,6 +9,8 @@ commit: add
 push: commit
 	git push origin master
 
-publish: push
-	cd ~/hexo
-	make
+generate: push
+	cd ~/hexo && hexo g
+
+deploy: generate
+	cd ~/hexo && hexo d
