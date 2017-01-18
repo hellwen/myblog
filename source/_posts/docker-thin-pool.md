@@ -1,4 +1,4 @@
-title: Docker thin pool配置
+title: Docker Thin pool
 date: 2017-01-18
 tags:
 - docker
