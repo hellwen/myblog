@@ -181,9 +181,4 @@ hexo d
 
 如果上述命令执行正常，你将可以打开你的博客页面：[https://xxx.github.io/](https://xxx.github.io/)
 
-
-相关参考资料：
-
-
-
-
+Done
