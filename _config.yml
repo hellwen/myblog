@@ -7,8 +7,8 @@ title: Dean's Blog
 subtitle: to going...
 description:
 author: Dean.wu
-language: zh_CN
-timezone:
+language: en
+timezone: Asia/Shanghai
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
@@ -60,15 +60,25 @@ time_format: HH:mm:ss
 per_page: 10
 pagination_dir: page
 
-# Extensions
-## Plugins: https://hexo.io/plugins/
-## Themes: https://hexo.io/themes/
-theme: next
-
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
   repo: git@github.com:hellwen/hellwen.github.io.git
   branch: master
-  message: 'update :{{now("YYYY-MM-DD HH/mm/ss")}}'
+  message: update :{{now("YYYY-MM-DD HH/mm/ss")}}
+
+# Extensions
+## Plugins: https://hexo.io/plugins/
+## Themes: https://hexo.io/themes/
+theme: next
+
+menu:
+  home: /
+  #categories: /categories
+  archives: /archives
+  tags: /tags
+  about: /about
+  commonweal: /404.html
+
+scheme: Pisces
