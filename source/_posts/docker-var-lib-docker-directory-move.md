@@ -1,4 +1,4 @@
-title: Move the docker\`s /var/lib/docker directory
+title: Docker, move the /var/lib/docker directory
 date: 2017-02-22
 tags:
 - docker
