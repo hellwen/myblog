@@ -14,3 +14,4 @@ generate: push
 
 deploy: generate
 	cd ~/hexo && hexo d
+	echo "myblog site: https://hellwen.github.io/"
