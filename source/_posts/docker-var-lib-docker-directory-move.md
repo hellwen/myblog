@@ -50,7 +50,11 @@ OPTIONS='--selinux-enabled --log-driver=journald -g /data/docker/'
 
 the `/data/docker/` is new docker directory
 
-if `/var/lib/docker` have your images and want to save it. Move the data to `/data/docker` before start docker
+if `/var/lib/docker` have your images and want to save it. Move the data to `/data/docker`
+
+```
+mv /var/lib/docker /data/
+```
 
 ```shell
 systemctl start docker
