@@ -55,3 +55,7 @@ if `/var/lib/docker` have your images and want to save it. Move the data to `/da
 ```shell
 systemctl start docker
 ```
+
+link: 
+[#3127](https://github.com/docker/docker/issues/3127)
+[How do I change the Docker image installation directory](https://forums.docker.com/t/how-do-i-change-the-docker-image-installation-directory/1169/2)
