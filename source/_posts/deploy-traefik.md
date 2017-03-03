@@ -234,3 +234,6 @@ $ curl -H "Host: testpage.local.io" http://192.168.72.2
 I am1: 172.1.14.4, the version is: 0.5
 ```
 
+# 参考
+[Kubernetes : Ingress Controller with Træfɪk and Let's Encrypt](https://blog.osones.com/en/kubernetes-ingress-controller-with-traefik-and-lets-encrypt.html)
+[Traefik-kubernetes 初试](http://www.colabug.com/thread-1703745-1-1.html)
