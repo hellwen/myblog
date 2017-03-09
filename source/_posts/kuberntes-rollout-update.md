@@ -292,28 +292,42 @@ deployment "testpage" successfully rolled out
 上述过程可以看到kuberentes的pod是一个一个更新的。直到最后老pod被清理掉。升级完成
 
 
-kubectl get po输出（这里可以直观看出整个过程）
+kubectl get po输出, 这里可以直观看出整个过程，下列的输出我是截取了关键的变化点。
+
+我在几个关键点后面写上（标注N）用于进行过程解释
+
+标注1，因为配置文件中strategy的配置，不运行kuberentes进行同位替换，所有kuberentes创建了一个新pod
+标注2，新pod创建成功，但是因为readinessProbe的配置kubernetes需要检测到8080端口的可访问才算是READY状态，所以状态READY为0/1（这里数字的原因是一个pod中可以有多个容器）
+标注3，新pod创建成功，并且READY处于1/1（说明一个pod中的容器全部ready）这是该新pod会被添加到service中接受访问，我们结合testpage的访问数据可以看到在43:09时新pod被访问到
+```
+Thu Mar  9 10:43:09 CST 2017
+I am: 172.1.65.4, the version is: 0.9
+```
+标注4，包括新pod因为有3个pod可以提供服务，所有这是kubernetes下令中止一个老pod
+标注5，因老pod已被中止（这里是异步的），kuberentes下令开始再创建一个新pod用于进行下一个老pod的替换
+循环这个过程直到所有老pod替换完成，升级结束
+
 ```
 Thu Mar  9 10:42:39 CST 2017
 NAME                       READY     STATUS              RESTARTS   AGE       IP            NODE
 testpage-230767614-fm0m1   1/1       Running             0          7m        172.1.62.10   192.168.72.233
 testpage-230767614-glvbz   1/1       Running             0          7m        172.1.60.5    192.168.72.2
 testpage-230767614-hpx9s   1/1       Running             0          7m        172.1.14.7    192.168.72.128
-testpage-515849216-059b0   **0/1       ContainerCreating**   0          14s       <none>        192.168.72.190
+testpage-515849216-059b0   0/1       ContainerCreating   0          14s       <none>        192.168.72.190   (标注1)
 Thu Mar  9 10:42:40 CST 2017
 NAME                       READY     STATUS    RESTARTS   AGE       IP            NODE
 testpage-230767614-fm0m1   1/1       Running   0          7m        172.1.62.10   192.168.72.233
 testpage-230767614-glvbz   1/1       Running   0          7m        172.1.60.5    192.168.72.2
 testpage-230767614-hpx9s   1/1       Running   0          7m        172.1.14.7    192.168.72.128
-testpage-515849216-059b0   **0/1       Running**   0          15s       172.1.65.4    192.168.72.190
+testpage-515849216-059b0   0/1       Running   0          15s       172.1.65.4    192.168.72.190    (标注2)
 ...
 Thu Mar  9 10:43:06 CST 2017
 NAME                       READY     STATUS              RESTARTS   AGE       IP            NODE
-testpage-230767614-fm0m1   **1/1       Terminating**         0          7m        172.1.62.10   192.168.72.233
+testpage-230767614-fm0m1   1/1       Terminating         0          7m        172.1.62.10   192.168.72.233   (标注4)
 testpage-230767614-glvbz   1/1       Running             0          7m        172.1.60.5    192.168.72.2
 testpage-230767614-hpx9s   1/1       Running             0          7m        172.1.14.7    192.168.72.128
-testpage-515849216-059b0   **1/1       Running**             0          41s       172.1.65.4    192.168.72.190
-testpage-515849216-1sf6b   0/1       ContainerCreating   0          1s        <none>        192.168.72.233
+testpage-515849216-059b0   1/1       Running             0          41s       172.1.65.4    192.168.72.190   (标注3)
+testpage-515849216-1sf6b   0/1       ContainerCreating   0          1s        <none>        192.168.72.233   (标注5)
 ...
 Thu Mar  9 10:43:18 CST 2017
 NAME                       READY     STATUS        RESTARTS   AGE       IP            NODE
@@ -353,47 +367,9 @@ testpage-515849216-1sf6b   1/1       Running   0          4m        172.1.62.11 
 testpage-515849216-5jfb5   1/1       Running   0          4m        172.1.60.11   192.168.72.2
 ```
 
-testpage访问的日志太多，也不好看出变法，这里只列了一段。可以看出整个过程业务是没有中断的，且新老版本共存直到老版本消失。
-```
-Thu Mar  9 10:43:51 CST 2017
-I am: 172.1.62.11, the version is: 0.9
-Thu Mar  9 10:43:52 CST 2017
-I am: 172.1.14.7, the version is: 0.8
-Thu Mar  9 10:43:53 CST 2017
-I am: 172.1.65.4, the version is: 0.9
-Thu Mar  9 10:43:54 CST 2017
-I am: 172.1.62.11, the version is: 0.9
-Thu Mar  9 10:43:55 CST 2017
-I am: 172.1.14.7, the version is: 0.8
-Thu Mar  9 10:43:56 CST 2017
-I am: 172.1.14.7, the version is: 0.8
-Thu Mar  9 10:43:57 CST 2017
-I am: 172.1.65.4, the version is: 0.9
-Thu Mar  9 10:43:58 CST 2017
-I am: 172.1.65.4, the version is: 0.9
-Thu Mar  9 10:43:59 CST 2017
-I am: 172.1.62.11, the version is: 0.9
-Thu Mar  9 10:44:00 CST 2017
-I am: 172.1.14.7, the version is: 0.8
-Thu Mar  9 10:44:01 CST 2017
-I am: 172.1.14.7, the version is: 0.8
-Thu Mar  9 10:44:02 CST 2017
-I am: 172.1.62.11, the version is: 0.9
-Thu Mar  9 10:44:03 CST 2017
-I am: 172.1.62.11, the version is: 0.9
-Thu Mar  9 10:44:04 CST 2017
-I am: 172.1.65.4, the version is: 0.9
-Thu Mar  9 10:44:05 CST 2017
-I am: 172.1.14.7, the version is: 0.8
-Thu Mar  9 10:44:06 CST 2017
-I am: 172.1.62.11, the version is: 0.9
-Thu Mar  9 10:44:07 CST 2017
-I am: 172.1.60.11, the version is: 0.9
-Thu Mar  9 10:44:08 CST 2017
-I am: 172.1.60.11, the version is: 0.9
-```
+# 总结
 
-
-
+1. 策略配置让kubernetes必须先创建一个新pod去替换老pod（而不是删除老pod再创建新pod，这个策略可自行配置）
+2. 每次仅替换一个pod，并进行业务的无缝切换
 
 
