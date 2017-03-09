@@ -371,5 +371,6 @@ testpage-515849216-5jfb5   1/1       Running   0          4m        172.1.60.11 
 
 1. 策略配置让kubernetes必须先创建一个新pod去替换老pod（而不是删除老pod再创建新pod，这个策略可自行配置）
 2. 每次仅替换一个pod，并进行业务的无缝切换
+3. 整个过程readinessProbe非常重要，确定着业务是否会被中断（必须确保readinessProbe的验证是对业务的准确验证，因为测试这里仅进行端口验证）
 
 
