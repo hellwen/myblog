@@ -374,3 +374,26 @@ testpage-515849216-5jfb5   1/1       Running   0          4m        172.1.60.11 
 3. 整个过程readinessProbe非常重要，确定着业务是否会被中断（必须确保readinessProbe的验证是对业务的准确验证，因为测试这里仅进行端口验证）
 
 
+# kubernetes支持其他rollout操作
+
+Read the deployment history
+
+```
+kubectl rollout history deployment testpage
+kubectl rollout history deployment testpage --revision 42
+```
+
+Rollback to the previous deployed version
+
+```
+kubectl rollout undo deployment testpage
+kubectl rollout undo deployment testpage --to-revision 21
+```
+
+Pause and Resume
+
+```
+kubectl rollout pause deployment testpage
+kubectl rollout resume deployment testpage
+```
+
