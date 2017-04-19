@@ -196,7 +196,7 @@ spec:
     spec:
       containers:
       - name: testpage
-        image: k8s-registry.zeusis.com:32000/testpage:0.5
+        image: registry.local.com/testpage:0.5
         imagePullPolicy: Always
         resources:
           limits:

@@ -6,7 +6,9 @@ tags:
 - registry
 ---
 
-Harbor 是企业级的docker registry版本，实际上它主要对docker registry封装了两个功能：1.权限管理 2.同步功能
+Harbor 是企业级的docker registry版本，实际上它主要对docker registry封装了两个功能：
+1.权限管理
+2.同步功能
 
 这篇文章主要介绍下harbor的部署，另外也会结合Kubernetes介绍如何在访问需要帐号的docker registry
 
@@ -110,7 +112,7 @@ subject=/C=XX/L=Default City/O=Default Company Ltd/CN=reg.local.com
 Getting CA Private Key
 ```
 
-这里不详细介绍这几个key的原理了，大家可以自行baidu，ssl key还是建议大家去研究下，比较很多产品部署都会用到
+这里不详细介绍这几个key的原理了，大家可以自行baidu，ssl key还是建议大家去研究下，毕竟很多产品部署都会用到
 
 ## 修改配置文件：harbor.cfg
 
@@ -130,9 +132,29 @@ Getting CA Private Key
 
 如果这一步没有报错harbor就部署完成了。
 
+查看harbor启动情况
+```
+# docker ps
+CONTAINER ID        IMAGE                              COMMAND                  CREATED             STATUS              PORTS                                                              NAMES
+15452d1c314e        vmware/nginx:1.11.5-patched        "nginx -g 'daemon off"   20 hours ago        Up 20 hours         0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp, 0.0.0.0:4443->4443/tcp   nginx
+252065f73780        vmware/harbor-jobservice:v1.1.0    "/harbor/harbor_jobse"   20 hours ago        Up 20 hours                                                                            harbor-jobservice
+281a82e4373c        vmware/harbor-ui:v1.1.0            "/harbor/harbor_ui"      20 hours ago        Up 20 hours                                                                            harbor-ui
+644245ba9fbf        vmware/harbor-adminserver:v1.1.0   "/harbor/harbor_admin"   21 hours ago        Up 20 hours                                                                            harbor-adminserver
+02900a2759b6        vmware/harbor-db:v1.1.0            "docker-entrypoint.sh"   21 hours ago        Up 20 hours         3306/tcp                                                           harbor-db
+814b2c0df893        vmware/registry:photon-2.6.0       "/entrypoint.sh serve"   21 hours ago        Up 20 hours         5000/tcp                                                           registry
+ee32489ccee9        vmware/harbor-log:v1.1.0           "/bin/sh -c 'crond &&"   21 hours ago        Up 20 hours         127.0.0.1:1514->514/tcp                                            harbor-log
+```
+
 接下来将域名reg.local.com配置指向Harbor部署的机器，就可以通过浏览器访问：https://reg.local.com
 帐号为admin, 密码在harbor.cfg的harbor_admin_password配置的：Harbor12345
 
+# harbor 基本维护操作
+
+```
+cd ~/harbor
+docker-compose down
+docker-compose start
+```
 
 # docker 使用
 
