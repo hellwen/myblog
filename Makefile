@@ -10,8 +10,8 @@ push: commit
 	git push origin master
 
 generate: push
-	cd ~/hexo && hexo g
+	hexo g
 
 deploy: generate
-	cd ~/hexo && hexo d
+	hexo d
 	echo "myblog site: https://hellwen.github.io/"
