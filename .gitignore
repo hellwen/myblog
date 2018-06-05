@@ -9,3 +9,4 @@ package-lock.json
 # Editor directories and files
 *.swp
 public
+.deploy_git
