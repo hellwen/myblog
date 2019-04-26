@@ -1,0 +1,35 @@
+baseURL = "https://hellwen.github.io/"
+
+name = "Hellwen"
+title = "Hellwen"
+hasCJKLanguage = true
+summaryLength = 70
+
+license = "MIT"
+languageCode = "zh-cn"
+# Site language. Available translations in the theme's `/i18n` directory.
+# defaultContentLanguage = "en"
+defaultContentLanguage = "zh"
+# Enable comments by entering your Disqus shortname
+disqusShortname = "devcows"
+
+theme = "hyde"
+# theme = "hugo-whisper-theme"
+
+[params]
+  themeColor = "theme-base-09"
+  description = "This a private blog"
+
+[author]
+    name = "hellwen"
+    homepage = "https://hellwen.github.io/"
+
+[permalinks]
+  post = "/:year/:month/:day/:title/"
+
+[menu]
+[[menu.main]]
+  name = "Tags"
+  weight = 30
+  identifier = "tags"
+  url = "/tags/"
