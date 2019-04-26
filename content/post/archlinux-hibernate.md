@@ -5,8 +5,9 @@ tags:
 - arch
 - linux
 - hibernate
+categories:
+- archlinux
 ---
-
 
 # 修改swap partition/file size
 
