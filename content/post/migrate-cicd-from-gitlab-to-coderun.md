@@ -137,4 +137,4 @@ steps:
 
 Kubernetes集群`myK8s`的配置：
 
-![](/img/blog/kubernetes_conf.png?classes=shadow)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.nqbypg73bt.png)

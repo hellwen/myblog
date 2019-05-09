@@ -30,7 +30,7 @@ categories: ["coderun", "kubernetes"]
 
 不管哪种集群创建后都可以在控制台获取到`KubeConfig`配置，在阿里云控制台点击某个集群后可以看到下图`KubeConfig`：
 
-![](/img/blog/aliyun_kubeconfig.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.vd98v1ry3sm.png)
 
 我们需要三个信息：
 
@@ -50,7 +50,7 @@ categories: ["coderun", "kubernetes"]
 
 现在我们需要将`k8s`的集群连接配置到`Coderun`中，在控制台的`整合`->`Kubernetes`，点击右边的`添加`按钮选择`证书`模式(如果你使用`Token`请选择`Token`模式)，如图：
 
-![](/img/blog/kubernetes_conf2.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.g2b1z3xy15p.png)
 
 - 其中上图中的`名称`是你可以自行定义的名称，这个名称可以方便后续在`Pipeline`中使用，所以最好取一个好记的名称(这里使用`myk8s`)．
 - 证书：填写`KubeConfig`中的`client-certificate-data`的内容
@@ -64,11 +64,11 @@ categories: ["coderun", "kubernetes"]
 
 在`Coderun`控制台的`Repo|仓库`，点击`添加仓库`．在右侧选择代码仓库，(如果不是当前用户的`Git`仓库，参见[Git配置](https://g.coderun.top/docs/#/config/integration/git))，如下图：
 
-![](/img/blog/add_repo.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.l8onni5z74.png)
 
 点击下一步后，选择`Build`类型
 
-![](/img/blog/add_repo_type.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.93gz87mmi8.png)
 
 三种类型分别是：
 
@@ -78,13 +78,13 @@ categories: ["coderun", "kubernetes"]
 
 因为我们在代码仓库中已经有`Dockerfile`，所以直接使用`Dockerfile`创建，我们可以看到添加好的仓库：
 
-![](/img/blog/repo_list.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.oo9j6rxz75.png)
 
 ### `Pipeline`配置
 
 点击添加好的仓库`hellwen/coderun-demo`，我们可以看到`Pipeline`页面，如图：
 
-![](/img/blog/repo_pipeline_yml.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.sa89iv8mw8q.png)
 
 `Pipeline`配置如下：
 
@@ -136,21 +136,21 @@ steps:
 
 配置好我们就可以进行下测试了，选择`分支`页面，如图：
 
-![](/img/blog/repo_branch.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.nog2pm6mqf.png)
 
 点击`Build`后可以看到当前的`Build`进度，第一次`Build`一般会因为上传镜像所以稍微有点慢
 
-![](/img/blog/repo_build_log.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.qwuxh7r27yq.png)
 
 `Build`完成后如下右上角有绿色确定图标指示成功：
 
-![](/img/blog/repo_build_log2.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.3ae4iq6pb7w.png)
 
 `crun/docker`会自动上传镜像到对应的仓库中，所以观察日志可以看到上传后的镜像地址是：`r.crun.top/hellwen/hellwen/coderun-demo:latest`，其中`hellwen/hellwen`并不是`Bug`第一个`hellwen`是`Coderun`账号，第二个`hellwen`是`Github`账号(我们添加的仓库的前缀)
 
 我们到`镜像`页面可以看到我们刚刚上传的镜像：
 
-![](/img/blog/images.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.ispdiiloue.png)
 
 ### Kubernetes部署
 
@@ -162,11 +162,11 @@ steps:
 
 `Coderun`不支持账号密码，因此我们需要一个`Token`，可通过`整合`->`Token`获取：
 
-![](/img/blog/token.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.9zgzba6b2xn.png)
 
 点击`生成Token`，任何输入一个名称，点击`生成`，如下：
 
-![](/img/blog/token_gen.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.gg8g3ivra4q.png)
 
 复制上图的`Token`备用：`bj8pikhk57kg00fn9vd0`
 
@@ -279,7 +279,7 @@ $ helm install stable/nginx-ingress --name nginx-ingress --namespace kube-system
 
 在执行一次`Build`，如下：
 
-![](/img/blog/repo_build_log3.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.qwuxh7r27yq.png)
 
 上图的左边列表我们可以看到多了一个`deploy`，右边的日志显示我们部署了`Deployment`，`Service`和`Ingress`
 
@@ -310,7 +310,7 @@ r.crun.top/hellwen/hellwen/coderun-demo:latest
 
 如果有`ingress`控制器，直接使用`ingress`的地址`47.110.164.15`进行访问：
 
-![](/img/blog/demo_view_for_k8s.png)
+![](https://raw.githubusercontent.com/hellwen/images/master/blog/image.y7ldoy9vir.png)
 
 下次你如果往代码仓库中提交代码，`Coderun`就会自动触发并自动部署，完全自动哦。
 
